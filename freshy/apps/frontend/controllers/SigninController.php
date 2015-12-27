@@ -2,6 +2,7 @@
 
 namespace Modules\Frontend\Controllers;
 use Modules\Frontend\Models\User;
+use Modules\Frontend\ModelViews\UserView;
 use DateTime;
 
 class SigninController extends BaseController {
@@ -9,73 +10,72 @@ class SigninController extends BaseController {
 	}
 	public function indexAction() {
 		$aParam = $this->getParam();
-		if ($aParam['token'] == TOKEN){
-			$data = $aParam['data'];
-			$checkUser = User::findFirst("username='".$data['username']."' OR email='".$data['username']."'");
-			if ($checkUser == true){
-				$checkUser = $checkUser->toArray();
-				if ($checkUser['password'] == sha1($checkUser['hash'].$data['password'])){
-					unset($checkUser['hash']);unset($checkUser['password']);
-					return $this->sendJson(json_encode(array("result"=>1,"data"=>$checkUser,"message"=>"Successful")));
+		$required = array("username","password");
+		if($this->checkParams($required,$aParam)) {
+			$checkUserSession = $this->session->get(USER_SESSION);
+			if (isset($checkUserSession)&&($checkUserSession['username']==$aParam['username']||$checkUserSession['email']==$aParam['username'])){
+				$this->session->set(USER_SESSION,$checkUserSession);
+				return $this->showErrorJson(1,null,$checkUserSession);
+			} else {
+				$checkUser = UserView::findFirst(array("username='".$aParam['username']."' OR email='".$aParam['username']."'"));
+				if ($checkUser == true){
+					$checkUser = $checkUser->toArray();
+					if ($checkUser['password'] == sha1($checkUser['hash'].$aParam['password'])){
+						unset($checkUser['password']);
+						unset($checkUser['hash']);
+						$checkUser['token']=$this->randomToken(10);
+						$this->session->set(USER_SESSION,$checkUser);
+						return $this->showErrorJson(1,null,$checkUser);
+					}
+					return $this->showErrorJson(13,null);
 				}
-				return $this->sendJson(json_encode(array("result"=>0,"message"=>"Password Invalid!")));
+				return $this->showErrorJson(14,null);
 			}
-			return $this->sendJson(json_encode(array("result"=>0,"message"=>"Username Invalid!")));
+		}else{
+			return $this->showErrorJson(19,null);
 		}
-		return $this->response->redirect ( "" );
 	}
 	public function resgisterAction() {
 		$aParam = $this->getParam();
-		if ($aParam['token'] == TOKEN){
-			$data = $aParam['data'];
-			$checkUsername = User::findFirst("username='".$data['username']."'");
+		$required = array("username","fullname","password","email","birthday","birthmonth","birthyear");
+		if($this->checkParams($required,$aParam)) {
+			$checkUsername = User::findFirst("username='".$aParam['username']."'");
 			if ($checkUsername == false){
-				$checkEmail = User::findFirst("email='".$data['email']."'");
+				$checkEmail = User::findFirst("email='".$aParam['email']."'");
 				if ($checkEmail == false){
-					$data['userid'] 		= $this->randomToken(10);
-					$data['token']			= $this->randomToken(20);
-					$data['hash']			= $this->randomToken(10);
-					$data['password']		= sha1($data['hash'].$data['password']);
-					$data['date_created'] 	= (new DateTime())->format('Y-m-d H:i:s');
-					$data['date_updated']	= (new DateTime())->format('Y-m-d H:i:s');
+					$aParam['userid'] 		= $this->randomToken(10);
+					$aParam['token']			= $this->randomToken(20);
+					$aParam['hash']			= $this->randomToken(10);
+					$aParam['password']		= sha1($aParam['hash'].$aParam['password']);
+					$aParam['created_at'] 	= (new DateTime())->format('Y-m-d H:i:s');
+					$aParam['updated_at']	= (new DateTime())->format('Y-m-d H:i:s');
 					$userNew = new User();
-					$result = $userNew->save($data);
+					$result = $userNew->save($aParam);
 					if ($result == true){
-						return $this->sendJson(json_encode(array("result"=>$result,"message"=>"Successful")));
+						unset($aParam['password']);
+						unset($aParam['hash']);
+						$this->session->set(USER_SESSION,$aParam);
+						return $this->showErrorJson(1,null,$aParam);
+						
 					}else{
-						return $this->sendJson(json_encode(array("result"=>0,"message"=>"Faild")));
+						return $this->showErrorJson(0,null);
 					}
+				} else {
+					return $this->showErrorJson(15,null);
 				}
-				unset($data['email']);
-				return $this->sendJson(json_encode(array("result"=>0,"data"=>$data,"message"=>"Email already exists.")));
+			} else {
+				return $this->showErrorJson(16,null);
 			}
-			unset($data['username']);
-			return $this->sendJson(json_encode(array("result"=>0,"data"=>$data,"message"=>"Username already exists.")));
+		}else{
+			return $this->showErrorJson(19,null);
 		}
-		return $this->response->redirect ( "" );
 	}
-	public function checkUsernameAction() {
+	public function checkUserAction() {
 		$aParam = $this->getParam();
-		if ($aParam['token'] == TOKEN){
-			$data = $aParam['data'];
-			$checkUsername = User::findFirst("username='".$data['username']."'");
-			if ($checkUsername == false){
-				return $this->sendJson(json_encode(array("result"=>1)));
-			}
-			return $this->sendJson(json_encode(array("result"=>0,"message"=>"Username already exists.")));
+		$checkUsername = UserView::findFirst(array("username='".$aParam['username']."' OR email='".$aParam['username']."'"));
+		if ($checkUsername){
+			return $this->showErrorJson(20,null);
 		}
-		return $this->response->redirect ( "" );
-	}
-	public function checkEmailAction() {
-		$aParam = $this->getParam();
-		if ($aParam['token'] == TOKEN){
-			$data = $aParam['data'];
-			$checkEmail = User::findFirst("email='".$data['email']."'");
-			if ($checkEmail == false){
-				return $this->sendJson(json_encode(array("result"=>1)));
-			}
-			return $this->sendJson(json_encode(array("result"=>0,"message"=>"Email already exists.")));
-		}
-		return $this->response->redirect ( "" );
+		return $this->showErrorJson(21,null);
 	}
 }

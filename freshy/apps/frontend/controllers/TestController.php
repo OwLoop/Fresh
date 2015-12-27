@@ -8,6 +8,10 @@ class TestController extends BaseController {
 		
 	}
 	public function indexAction() {
+		echo $this->randomToken(10);
+		// echo (new DateTime())->format('Y-m-d H:i:s');
+	}
+	public function demoAction() {
 		$array1 = array("username"=>"nghia","password"=>123456,"email"=>"nhnghia@gmail.com","birthday"=>"1991-10-25");
 		echo 'http://api.freshy.vn/signin/resgister?data='.serialize($array1);
 		echo '<br><br>'.'http://api.freshy.vn/signin/resgister?data='.serialize($array1).'&token='.TOKEN;
