@@ -116,7 +116,7 @@ class ProductController extends BaseController {
 			$update = Product::findFirst("productid='".$aParam['productid']."'");
 			if ($update->update($aParam)==true){
 				$data 						= Product::findFirst("productid='".$aParam['productid']."'");
-				return $this->showErrorJson(1,"Product",,"Product",$aParam);
+				return $this->showErrorJson(1,"Product","Product",$aParam);
 			}else{
 				return $this->showErrorJson(0,"Product",$aParam);
 			}
